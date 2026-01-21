@@ -37,8 +37,16 @@ if uploaded_file:
         with st.spinner("Loading and indexing documents..."):
 
             documents = load_documents("data/uploaded_docs")
-            chunks = split_documents(documents)
-            create_vector_store(chunks)
+            if len(documents) > 0:
+                chunks = split_documents(documents)
+            else:
+                chunks = []
+
+            if len(chunks) > 0:
+                create_vector_store(chunks)
+            else:
+                st.warning("No document content found to index.")
+
 
             st.session_state.qa_chain = create_chain()
 
