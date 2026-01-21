@@ -1,13 +1,25 @@
+import streamlit as st
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_classic.prompts import ChatPromptTemplate
+
+from config import LLM_MODEL
+from parser import AnswerOutput
+from memory import add_to_memory, get_memory_text
+
+
 def generate_answer(docs, question, pages):
+
+    api_key = st.secrets["GOOGLE_API_KEY"]
 
     llm = ChatGoogleGenerativeAI(
         model=LLM_MODEL,
-        temperature=0
+        temperature=0,
+        google_api_key=api_key
     )
 
     prompt = ChatPromptTemplate.from_template(
         """
-You are an AI assistant answering questions from document content only.
+You are an AI assistant answering questions strictly using the given document content.
 
 Conversation History:
 {history}
@@ -18,7 +30,7 @@ Context:
 Question:
 {question}
 
-Answer clearly.
+Give a clear and concise answer.
 """
     )
 
@@ -30,8 +42,10 @@ Answer clearly.
 
     response = llm.invoke(formatted_prompt)
 
+    answer_text = response.content
+
     parsed = AnswerOutput(
-        answer=response.content,
+        answer=answer_text,
         pages=pages
     )
 
