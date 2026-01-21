@@ -1,13 +1,3 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from dotenv import load_dotenv
-
-from config import LLM_MODEL
-from parser import AnswerOutput
-from memory import add_to_memory, get_memory_text
-
-load_dotenv()
-
-
 def generate_answer(docs, question, pages):
 
     llm = ChatGoogleGenerativeAI(
@@ -15,27 +5,33 @@ def generate_answer(docs, question, pages):
         temperature=0
     )
 
-    context_text = "\n\n".join([doc.page_content for doc in docs])
-
-    prompt = f"""
-You are an AI assistant. Answer ONLY using the provided document content.
+    prompt = ChatPromptTemplate.from_template(
+        """
+You are an AI assistant answering questions from document content only.
 
 Conversation History:
-{get_memory_text()}
+{history}
 
-Document Content:
-{context_text}
+Context:
+{context}
 
 Question:
 {question}
 
-If answer is not found in document, say "Not found in document".
+Answer clearly.
 """
+    )
 
-    response = llm.invoke(prompt)
+    formatted_prompt = prompt.format(
+        history=get_memory_text(),
+        context="\n".join([doc.page_content for doc in docs]),
+        question=question
+    )
+
+    response = llm.invoke(formatted_prompt)
 
     parsed = AnswerOutput(
-        answer=response.content.strip(),
+        answer=response.content,
         pages=pages
     )
 
