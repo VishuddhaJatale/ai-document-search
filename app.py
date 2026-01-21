@@ -30,27 +30,29 @@ if uploaded_file:
     with open(file_path, "wb") as f:
         f.write(uploaded_file.read())
 
-    st.success("File uploaded successfully")
+    st.success("✅ File uploaded successfully")
 
     if st.button("Process Document"):
 
         with st.spinner("Loading and indexing documents..."):
 
             documents = load_documents("data/uploaded_docs")
-            if len(documents) > 0:
-                chunks = split_documents(documents)
-            else:
-                chunks = []
 
-            if len(chunks) > 0:
-                create_vector_store(chunks)
-            else:
-                st.warning("No document content found to index.")
+            if len(documents) == 0:
+                st.error("❌ No document content found to index.")
+                st.stop()
 
+            chunks = split_documents(documents)
+
+            if len(chunks) == 0:
+                st.error("❌ Text splitting failed. No chunks created.")
+                st.stop()
+
+            create_vector_store(chunks)
 
             st.session_state.qa_chain = create_chain()
 
-        st.success("Documents indexed and chain ready!")
+        st.success("✅ Documents indexed and chain ready!")
 
 st.divider()
 st.subheader("Ask Questions From Document")
@@ -60,10 +62,10 @@ question = st.text_input("Enter your question")
 if st.button("Ask"):
 
     if st.session_state.qa_chain is None:
-        st.warning("Please upload and process a document first.")
+        st.warning("⚠️ Please upload and process a document first.")
 
     elif question.strip() == "":
-        st.warning("Please enter a question.")
+        st.warning("⚠️ Please enter a question.")
 
     else:
         with st.spinner("Generating answer..."):
