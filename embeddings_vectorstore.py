@@ -1,31 +1,25 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from config import EMBEDDING_MODEL, VECTOR_DIR
-import os
-import shutil
+from langchain_community.vectorstores.utils import filter_complex_metadata
+from config import EMBEDDING_MODEL
+
+# Use in-memory vector DB (Cloud safe)
+VECTOR_DB = None
+
 
 def create_vector_store(chunks):
-
-    if os.path.exists(VECTOR_DIR):
-        try:
-            shutil.rmtree(VECTOR_DIR)
-        except:
-            pass
+    global VECTOR_DB
 
     embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
-    Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory=VECTOR_DIR
+    clean_chunks = filter_complex_metadata(chunks)
+
+    VECTOR_DB = Chroma.from_documents(
+        documents=clean_chunks,
+        embedding=embeddings
     )
 
 
 def load_vector_store():
-
-    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-
-    return Chroma(
-        persist_directory=VECTOR_DIR,
-        embedding_function=embeddings
-    )
+    global VECTOR_DB
+    return VECTOR_DB

@@ -32,36 +32,35 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 if st.button("Process Document"):
 
     if not uploaded_files:
-        st.warning("Upload files first")
+        st.warning("⚠️ Please upload documents first")
         st.stop()
 
-    with st.spinner("Indexing documents..."):
+    with st.spinner("Loading and indexing documents..."):
 
-        st.session_state.processed = False
         st.session_state.qa_chain = None
+        st.session_state.processed = False
 
         if os.path.exists(UPLOAD_DIR):
-            shutil.rmtree(UPLOAD_DIR, ignore_errors=True)
-
-        if os.path.exists(VECTOR_DIR):
-            shutil.rmtree(VECTOR_DIR, ignore_errors=True)
+            shutil.rmtree(UPLOAD_DIR)
 
         os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-        for f in uploaded_files:
-            with open(os.path.join(UPLOAD_DIR, f.name), "wb") as out:
-                out.write(f.read())
+        for uploaded_file in uploaded_files:
+            file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
+
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.read())
 
         documents = load_documents(UPLOAD_DIR)
 
         if not documents:
-            st.error("No document content found")
+            st.error("❌ No document content found")
             st.stop()
 
         chunks = split_documents(documents)
 
         if not chunks:
-            st.error("Chunking failed")
+            st.error("❌ Text splitting failed")
             st.stop()
 
         create_vector_store(chunks)
@@ -69,7 +68,8 @@ if st.button("Process Document"):
         st.session_state.qa_chain = create_chain()
         st.session_state.processed = True
 
-    st.success("Documents indexed successfully")
+    st.success("✅ Documents indexed successfully!")
+
 
 st.divider()
 st.subheader("Ask Questions")
