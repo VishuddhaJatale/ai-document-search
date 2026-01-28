@@ -1,80 +1,102 @@
 import streamlit as st
 import os
+import shutil
+from dotenv import load_dotenv
 
 from load_documents import load_documents
 from text_splitting import split_documents
 from embeddings_vectorstore import create_vector_store
 from chain import create_chain
+from config import UPLOAD_DIR, VECTOR_DIR
 
-st.set_page_config(
-    page_title="AI Document Search System",
-    layout="centered"
-)
+load_dotenv()
+
+st.set_page_config("AI Document Search", layout="centered")
 
 st.title("📄 AI-Based Document Search & Knowledge Retrieval")
 
 if "qa_chain" not in st.session_state:
     st.session_state.qa_chain = None
 
-uploaded_file = st.file_uploader(
-    "Upload PDF or Text file",
-    type=["pdf", "txt"]
+if "processed" not in st.session_state:
+    st.session_state.processed = False
+
+uploaded_files = st.file_uploader(
+    "Upload Documents (PDF or TXT)",
+    type=["pdf", "txt"],
+    accept_multiple_files=True
 )
 
-if uploaded_file:
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    os.makedirs("data/uploaded_docs", exist_ok=True)
+if st.button("Process Document"):
 
-    file_path = f"data/uploaded_docs/{uploaded_file.name}"
+    if not uploaded_files:
+        st.warning("Upload files first")
+        st.stop()
 
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.read())
+    with st.spinner("Indexing documents..."):
 
-    st.success("✅ File uploaded successfully")
+        st.session_state.processed = False
+        st.session_state.qa_chain = None
 
-    if st.button("Process Document"):
+        if os.path.exists(UPLOAD_DIR):
+            shutil.rmtree(UPLOAD_DIR, ignore_errors=True)
 
-        with st.spinner("Loading and indexing documents..."):
+        if os.path.exists(VECTOR_DIR):
+            shutil.rmtree(VECTOR_DIR, ignore_errors=True)
 
-            documents = load_documents("data/uploaded_docs")
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-            if len(documents) == 0:
-                st.error("❌ No document content found to index.")
-                st.stop()
+        for f in uploaded_files:
+            with open(os.path.join(UPLOAD_DIR, f.name), "wb") as out:
+                out.write(f.read())
 
-            chunks = split_documents(documents)
+        documents = load_documents(UPLOAD_DIR)
 
-            if len(chunks) == 0:
-                st.error("❌ Text splitting failed. No chunks created.")
-                st.stop()
+        if not documents:
+            st.error("No document content found")
+            st.stop()
 
-            create_vector_store(chunks)
+        chunks = split_documents(documents)
 
-            st.session_state.qa_chain = create_chain()
+        if not chunks:
+            st.error("Chunking failed")
+            st.stop()
 
-        st.success("✅ Documents indexed and chain ready!")
+        create_vector_store(chunks)
+
+        st.session_state.qa_chain = create_chain()
+        st.session_state.processed = True
+
+    st.success("Documents indexed successfully")
 
 st.divider()
-st.subheader("Ask Questions From Document")
+st.subheader("Ask Questions")
 
 question = st.text_input("Enter your question")
 
 if st.button("Ask"):
 
-    if st.session_state.qa_chain is None:
-        st.warning("⚠️ Please upload and process a document first.")
+    if not st.session_state.processed:
+        st.warning("Process documents first")
 
-    elif question.strip() == "":
-        st.warning("⚠️ Please enter a question.")
+    elif not question.strip():
+        st.warning("Enter a question")
 
     else:
         with st.spinner("Generating answer..."):
-
             result = st.session_state.qa_chain(question)
 
         st.markdown("Answer")
         st.write(result.answer)
 
-        if result.pages:
-            pages_text = ", ".join(f"Page {p}" for p in result.pages)
-            st.caption(f"📄 Source: {pages_text}")
+        if result.docs:
+            sources = set()
+
+            for doc in result.docs:
+                src = doc.metadata.get("source", "file")
+                page = doc.metadata.get("page", 0) + 1
+                sources.add(f"{src} - Page {page}")
+
+            st.caption("📄 Source: " + ", ".join(sources))

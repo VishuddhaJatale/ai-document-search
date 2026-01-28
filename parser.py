@@ -1,11 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel
+from typing import List, Optional, Any
+
 
 class AnswerOutput(BaseModel):
-    answer: str = Field(
-        description="Final answer generated from the document context"
-    )
+    answer: str
+    pages: List[int]
 
-    pages: List[int] = Field(
-        description="Page numbers used to generate the answer"
-    )
+    docs: Optional[List[Any]] = None

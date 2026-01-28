@@ -1,15 +1,34 @@
-import streamlit as st
+import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_classic.prompts import ChatPromptTemplate
-
-from config import LLM_MODEL
+from config import GOOGLE_API_KEY
 from parser import AnswerOutput
-from memory import add_to_memory, get_memory_text
+from memory import add_to_memory
+from config import LLM_MODEL
+
+
+MAX_CONTEXT = 12000
 
 
 def generate_answer(docs, question, pages):
 
-    api_key = st.secrets["GOOGLE_API_KEY"]
+    if not docs:
+        return AnswerOutput(
+            answer="❌ I could not find this information in the uploaded documents.",
+            pages=[]
+        )
+
+    context = "\n\n".join([doc.page_content for doc in docs])
+
+    if len(context.strip()) < 50:
+        return AnswerOutput(
+            answer="❌ I could not find this information in the uploaded documents.",
+            pages=[]
+        )
+
+    context = context[:10000]
+
+    api_key = GOOGLE_API_KEY
 
     llm = ChatGoogleGenerativeAI(
         model=LLM_MODEL,
@@ -18,11 +37,25 @@ def generate_answer(docs, question, pages):
     )
 
     prompt = ChatPromptTemplate.from_template(
-        """
-You are an AI assistant answering questions strictly using the given document content.
+"""
+You are an AI assistant.
 
-Conversation History:
-{history}
+IMPORTANT RULES:
+- Use ONLY the given document context
+- DO NOT add external information
+- If multiple documents are present, summarize EACH document separately
+- Use headings with document name if available
+
+FORMAT:
+
+Document 1:
+- Summary points
+
+Document 2:
+- Summary points
+
+If information is missing say:
+"I could not find this information in the uploaded documents."
 
 Context:
 {context}
@@ -30,25 +63,36 @@ Context:
 Question:
 {question}
 
-Give a clear and concise answer.
+Answer:
 """
-    )
+)
+
 
     formatted_prompt = prompt.format(
-        history=get_memory_text(),
-        context="\n".join([doc.page_content for doc in docs]),
+        context=context,
         question=question
     )
 
-    response = llm.invoke(formatted_prompt)
+    try:
+        response = llm.invoke(formatted_prompt)
+        answer_text = response.content
 
-    answer_text = response.content
+    except Exception as e:
+        print("GEMINI ERROR:", e)
+
+        return AnswerOutput(
+        answer=f"❌ Gemini Error: {str(e)}",
+        pages=[]
+    )
+
 
     parsed = AnswerOutput(
         answer=answer_text,
         pages=pages
     )
 
-    add_to_memory(question, parsed.answer)
+    parsed.docs = docs
+
+    add_to_memory(question, answer_text)
 
     return parsed
