@@ -8,6 +8,7 @@ function DocumentUpload({ onUploadSuccess }) {
 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -17,6 +18,7 @@ function DocumentUpload({ onUploadSuccess }) {
     }
 
     setError("");
+    setNotice("");
 
     // Validate file type
     const fileName = file.name.toLowerCase();
@@ -29,7 +31,7 @@ function DocumentUpload({ onUploadSuccess }) {
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      setError("File size must be less than 10 MB.");
+      setError("File size must be 10 MB or smaller.");
       event.target.value = "";
       return;
     }
@@ -45,6 +47,10 @@ function DocumentUpload({ onUploadSuccess }) {
 
     try {
       const result = await uploadDocument(file);
+
+      if (result.status === "already_exists") {
+        setNotice(`"${result.filename}" is already uploaded, so it was not added again.`);
+      }
 
       onUploadSuccess(result);
     } catch (error) {
@@ -75,7 +81,7 @@ function DocumentUpload({ onUploadSuccess }) {
 
       <div
         onClick={handleChooseFile}
-        className={`group rounded-xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center transition-all duration-200 ${
+        className={`group rounded-xl border border-dashed border-slate-700 bg-slate-950/40 p-5 text-center transition-all duration-200 ${
           uploading
             ? "cursor-not-allowed opacity-70"
             : "cursor-pointer hover:border-blue-500/60 hover:bg-blue-500/5"
@@ -115,6 +121,12 @@ function DocumentUpload({ onUploadSuccess }) {
           </button>
         )}
       </div>
+
+      {notice && (
+        <p role="status" className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs leading-5 text-amber-400">
+          {notice}
+        </p>
+      )}
 
       {error && (
         <p className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs leading-5 text-red-400">

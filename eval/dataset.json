@@ -1,0 +1,421 @@
+[
+  {
+    "question": "What is the basic unit of Conceptual Dependency theory?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      10,
+      16
+    ],
+    "expected_answer_keywords": [
+      "conceptualization"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Which components define an event in a conceptualization?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      10
+    ],
+    "expected_answer_keywords": [
+      "actor",
+      "action",
+      "object"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Whose research group developed CD theory and what was its aim?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      13
+    ],
+    "expected_answer_keywords": [
+      "schank"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What was the role of the ELI program in the Yale AI Project?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      15
+    ],
+    "expected_answer_keywords": [
+      "riesbeck"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What did the MARGIE program do?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      15,
+      27
+    ],
+    "expected_answer_keywords": [
+      "inference"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What does the first basic axiom of CD theory say about sentences with identical meaning?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      16
+    ],
+    "expected_answer_keywords": [
+      "representation"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is the range of the HEALTH state variable in CD theory?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      22
+    ],
+    "expected_answer_keywords": [
+      "10"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Which basic states make up the compound state shocked?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      26
+    ],
+    "expected_answer_keywords": [
+      "surprise",
+      "disgust"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What does the CD action ATRANS represent and which verbs involve it?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      48
+    ],
+    "expected_answer_keywords": [
+      "possession",
+      "give"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What does the CD action PTRANS represent?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      48
+    ],
+    "expected_answer_keywords": [
+      "location"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What does MTRANS represent and how is see expressed with it?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      49
+    ],
+    "expected_answer_keywords": [
+      "mental"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Which CD action is used for verbs like decide, conclude and imagine?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      50
+    ],
+    "expected_answer_keywords": [
+      "mbuild"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is the underlying conceptual act behind the words give and take?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      43,
+      44
+    ],
+    "expected_answer_keywords": [
+      "trans"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What do the conceptual tenses p and f stand for?",
+    "expected_filename": "15._KRR-CD-Theory.pdf",
+    "expected_pages": [
+      62
+    ],
+    "expected_answer_keywords": [
+      "past",
+      "future"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Who put forward the idea that logic can be used for everyday computing?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      2
+    ],
+    "expected_answer_keywords": [
+      "kowalski"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What does the equation Program = Logic + Control mean?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      2
+    ],
+    "expected_answer_keywords": [
+      "control"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is the answer predicate used for in resolution?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      3,
+      4,
+      15
+    ],
+    "expected_answer_keywords": [
+      "answer"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Why can the answer predicate give a disjunctive answer in the Socrates and Plato example?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      4
+    ],
+    "expected_answer_keywords": [
+      "plato",
+      "socrates"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Who is considered the first to formulate the concept of zero?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      7
+    ],
+    "expected_answer_keywords": [
+      "brahmagupta"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "How are the natural numbers defined in Zermelo-Fraenkel set theory?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      8
+    ],
+    "expected_answer_keywords": [
+      "empty set"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What do the Peano axioms say about the successor function?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      9
+    ],
+    "expected_answer_keywords": [
+      "successor"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "How is addition defined using the Plus predicate?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      10,
+      11
+    ],
+    "expected_answer_keywords": [
+      "plus"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Why is first order logic called semi-decidable?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      16
+    ],
+    "expected_answer_keywords": [
+      "terminate"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is a Horn clause?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      18,
+      19
+    ],
+    "expected_answer_keywords": [
+      "positive literal"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "How are facts and rules written in Prolog syntax?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      20
+    ],
+    "expected_answer_keywords": [
+      ":-"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is an SLD derivation?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      23
+    ],
+    "expected_answer_keywords": [
+      "definite"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "How does the append program work for two lists?",
+    "expected_filename": "week_6_Logic-Programming.pdf",
+    "expected_pages": [
+      32,
+      33
+    ],
+    "expected_answer_keywords": [
+      "append"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What was the name of the old man Aarav met at the railway station?",
+    "expected_filename": "New_Text_Document.txt",
+    "expected_pages": [
+      1
+    ],
+    "expected_answer_keywords": [
+      "sharma"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What did Aarav's father originally want to become?",
+    "expected_filename": "New_Text_Document.txt",
+    "expected_pages": [
+      1
+    ],
+    "expected_answer_keywords": [
+      "writer"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What was the small initiative Aarav started for the children called?",
+    "expected_filename": "New_Text_Document.txt",
+    "expected_pages": [
+      1
+    ],
+    "expected_answer_keywords": [
+      "sunday school"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What did Kamla do when the little girl was two rupees short?",
+    "expected_filename": "New_Text_Document.txt",
+    "expected_pages": [
+      1
+    ],
+    "expected_answer_keywords": [
+      "biscuit"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Why did Mr. Mehta feel he had failed even though he was successful?",
+    "expected_filename": "New_Text_Document.txt",
+    "expected_pages": [
+      1
+    ],
+    "expected_answer_keywords": [
+      "family"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "Why did Aarav lose his job the second time?",
+    "expected_filename": "New_Text_Document.txt",
+    "expected_pages": [
+      1
+    ],
+    "expected_answer_keywords": [
+      "financial"
+    ],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is the time complexity of Dijkstra's algorithm with a Fibonacci heap?",
+    "expected_filename": "",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  },
+  {
+    "question": "What is the current stock price of Tesla?",
+    "expected_filename": "",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  },
+  {
+    "question": "Give me a recipe for butter chicken.",
+    "expected_filename": "",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  },
+  {
+    "question": "Who won the FIFA World Cup in 2018?",
+    "expected_filename": "",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  },
+  {
+    "question": "How do I train a convolutional neural network for image classification?",
+    "expected_filename": "",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  },
+  {
+    "question": "What are the placement statistics of SGSITS Indore?",
+    "expected_filename": "",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  }
+]

@@ -6,7 +6,7 @@ function DocumentList({
   deletingDocumentId,
 }) {
   return (
-    <div className="flex-1 px-6 pb-6">
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
       {documents.length === 0 ? (
         <div className="flex h-full items-center justify-center">
           <div className="text-center">
@@ -50,6 +50,9 @@ function DocumentList({
 
                       <p className="mt-1 text-xs text-emerald-400">
                         ✓ Indexed successfully
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {document.pages} {document.pages === 1 ? "page" : "pages"} · {document.chunks} {document.chunks === 1 ? "chunk" : "chunks"}
                       </p>
                     </div>
 
