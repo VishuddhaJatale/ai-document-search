@@ -1,0 +1,44 @@
+[
+  {
+    "question": "What is the minimum attendance requirement?",
+    "expected_filename": "academic_regulations.pdf",
+    "expected_pages": [12],
+    "expected_answer_keywords": ["75 percent", "attendance"],
+    "type": "in_scope"
+  },
+  {
+    "question": "How many attempts are allowed for a failed course?",
+    "expected_filename": "examination_policy.pdf",
+    "expected_pages": [8],
+    "expected_answer_keywords": ["attempt", "backlog"],
+    "type": "in_scope"
+  },
+  {
+    "question": "When must semester fees be paid?",
+    "expected_filename": "fee_deadlines.pdf",
+    "expected_pages": [2],
+    "expected_answer_keywords": ["semester fee", "deadline"],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is the procedure for applying for revaluation?",
+    "expected_filename": "examination_policy.pdf",
+    "expected_pages": [14],
+    "expected_answer_keywords": ["revaluation", "application"],
+    "type": "in_scope"
+  },
+  {
+    "question": "What is the university's policy on interplanetary travel grants?",
+    "expected_filename": "academic_regulations.pdf",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  },
+  {
+    "question": "Does the ordinance specify a guaranteed placement salary?",
+    "expected_filename": "academic_regulations.pdf",
+    "expected_pages": [],
+    "expected_answer_keywords": [],
+    "type": "out_of_scope"
+  }
+]

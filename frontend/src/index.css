@@ -23,3 +23,52 @@ body {
 
   background: #080d1a;
 }
+.markdown-content p { margin: 0.5rem 0; color: #e2e8f0; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3 { margin: 1rem 0 0.5rem; color: #f8fafc; font-weight: 650; line-height: 1.35; }
+.markdown-content h1 { font-size: 1.25rem; }
+.markdown-content h2 { font-size: 1.125rem; }
+.markdown-content h3 { font-size: 1rem; }
+.markdown-content ul, .markdown-content ol { margin: 0.5rem 0; padding-left: 1.4rem; color: #e2e8f0; }
+.markdown-content ul { list-style: disc; }
+.markdown-content ol { list-style: decimal; }
+.markdown-content li { margin: 0.2rem 0; }
+.markdown-content a { color: #60a5fa; text-decoration: underline; }
+.markdown-content blockquote { margin: 0.75rem 0; border-left: 3px solid #475569; padding-left: 0.75rem; color: #94a3b8; }
+.markdown-content code { border-radius: 0.25rem; background: #0b1220; padding: 0.1rem 0.25rem; color: #bfdbfe; }
+.markdown-content pre { overflow-x: auto; margin: 0.75rem 0; border: 1px solid #334155; border-radius: 0.5rem; background: #080d1a; padding: 0.75rem; }
+.markdown-content pre code { background: transparent; padding: 0; }
+.markdown-content table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+.markdown-content th, .markdown-content td { border: 1px solid #334155; padding: 0.4rem 0.6rem; text-align: left; }
+
+
+/* Dark themed scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #475569;
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}

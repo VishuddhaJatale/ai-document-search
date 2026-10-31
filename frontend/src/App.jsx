@@ -11,6 +11,7 @@ function App() {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [documentsError, setDocumentsError] = useState("");
   const [deletingDocumentId, setDeletingDocumentId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -51,6 +52,7 @@ const handleUploadSuccess = (document) => {
   }
 
   setDeletingDocumentId(documentId);
+  setDeleteError("");
 
   try {
     await deleteDocument(documentId);
@@ -66,7 +68,7 @@ const handleUploadSuccess = (document) => {
       }
     } catch (error) {
       console.error("Delete error:", error);
-      alert(error.message);
+      setDeleteError(error.message || "Unable to delete document.");
     } finally {
       setDeletingDocumentId(null);
     }
@@ -80,10 +82,10 @@ const handleUploadSuccess = (document) => {
         <div className="grid h-[calc(100vh-140px)] min-h-0 grid-cols-1 gap-6 lg:grid-cols-3">
 
           {/* Documents Panel */}
-          <section className="flex flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0F172A] shadow-xl shadow-black/10">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0F172A] shadow-xl shadow-black/10">
 
             {/* Panel Header */}
-            <div className="border-b border-slate-800/80 p-6">
+            <div className="shrink-0 border-b border-slate-800/80 p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-white">
@@ -102,7 +104,7 @@ const handleUploadSuccess = (document) => {
             </div>
 
             {/* Upload Area */}
-            <div className="p-6">
+            <div className="shrink-0 p-6">
               <DocumentUpload onUploadSuccess={handleUploadSuccess} />
               {documentsError && (
                 <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs leading-5 text-red-400">
@@ -110,6 +112,8 @@ const handleUploadSuccess = (document) => {
                 </div>
               )}
             </div>
+
+            {deleteError && <p role="alert" className="mx-6 mb-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">{deleteError}</p>}
 
             <DocumentList
               documents={documents}

@@ -1,532 +1,183 @@
 # AI Document Intelligence
 
-An AI-powered document search and question-answering application built with **React, FastAPI, LangChain, Hugging Face embeddings, ChromaDB, and Groq**.
-
-The application lets users upload PDF/TXT documents, index their contents as vector embeddings, ask natural-language questions, and receive answers grounded only in the uploaded document context. Answers include source document and page information for traceability.
+A full-stack Retrieval-Augmented Generation (RAG) application for uploading PDF/TXT files, indexing their text, and asking grounded questions with source-page references. The UI is React + Vite + Tailwind; the API is FastAPI; retrieval uses LangChain and ChromaDB; embeddings use Hugging Face `sentence-transformers/all-MiniLM-L6-v2`; answers use a Groq-hosted model through LangChain's OpenAI-compatible `ChatOpenAI` client.
 
 ## Features
 
-- PDF and TXT document upload
-- Client-side and backend file validation
-- Maximum upload size of 10 MB
-- Empty-file validation
-- SHA-256 based duplicate-content prevention
-- Persistent ChromaDB vector store
-- Semantic similarity search
-- Configurable Top-K retrieval
-- Document-specific or global search
-- RAG-based question answering
-- Groq LLM through an OpenAI-compatible API
-- Hugging Face `sentence-transformers/all-MiniLM-L6-v2` embeddings
-- Source citations with filename and page number
-- Persistent uploaded documents
-- Document deletion
-- Loading and API/network error handling
-- React component-based frontend
-- FastAPI Swagger/OpenAPI documentation
-- Dockerized backend
-- Docker volume persistence for uploaded documents and ChromaDB
+- PDF/TXT upload with streamed 10 MB limit enforcement, extension/content checks, and robust TXT decoding.
+- SHA-256 duplicate detection with a synchronized JSON document registry.
+- Persistent Chroma vector storage using cosine distance.
+- Configurable chunk size, overlap, Top-K, context budget, and optional MMR retrieval.
+- Follow-up question rewriting from up to six recent chat messages.
+- JSON query endpoint and SSE token streaming endpoint with a frontend JSON fallback.
+- Markdown-rendered assistant responses, source citations, per-document page/chunk counts, and clear-chat UX.
+- Prompt-injection-resistant instructions treating retrieved document text as untrusted data.
+- Retrieval/LLM/total timing logs; health reports API key configuration as a boolean and vector-store reachability.
+- Docker Compose backend + production Nginx frontend, persistent data, and Hugging Face model cache volume.
 
 ## Architecture
 
 ```text
-                         User
-                          │
-                          ▼
-                React + Vite Frontend
-                   localhost:5173
-                          │
-                    HTTP / JSON
-                          │
-                          ▼
-                 FastAPI Backend
-                   localhost:8000
-                          │
-          ┌───────────────┴────────────────┐
-          │                                │
-          ▼                                ▼
-   Document Pipeline                  Query Pipeline
-          │                                │
-   PDF / TXT Loader                  User Question
-          │                                │
-          ▼                                ▼
-   Recursive Character              Query Embedding
-      Text Splitter                       │
-          │                                ▼
-          ▼                           ChromaDB
- Hugging Face Embeddings                  │
-          │                          Top-K Chunks
-          ▼                                │
-       ChromaDB                            ▼
-          │                         Context Builder
-          │                                │
-          └───────────────┐                ▼
-                          │            Groq LLM
-                          │                │
-                          └────────────────┤
-                                           ▼
-                                  Answer + Sources
+React/Vite UI
+  ├─ upload/list/delete documents ──> FastAPI
+  └─ chat + history ────────────────> POST /query or POST /query/stream
+                                      │
+                         document loader + splitter
+                                      │
+                         Hugging Face embeddings
+                                      │
+                               ChromaDB (cosine)
+                                      │
+                      retrieval / optional MMR / context
+                                      │
+                      Groq ChatOpenAI (answer or tokens)
+                                      │
+                           answer + source metadata
 ```
 
-## RAG Pipeline
+`DATA_DIR` contains `uploaded_docs/`, `chroma_db/`, and `document_registry.json`. The registry keeps list requests independent of a full Chroma chunk scan.
 
-### 1. Document upload
-
-The frontend sends a PDF or TXT file to:
-
-```text
-POST /documents/upload
-```
-
-The backend validates the extension and checks that the uploaded file is not empty.
-
-The document service then:
-
-1. Sanitizes the filename.
-2. Calculates a SHA-256 hash of the file contents.
-3. Checks ChromaDB for an existing file with the same hash.
-4. Creates a UUID if the document is new.
-5. Saves the uploaded file.
-6. Loads the document.
-7. Adds document metadata.
-8. Splits the document into chunks.
-9. Creates chunk IDs.
-10. Stores the chunks in ChromaDB.
-
-### 2. Document loading
-
-Supported formats are:
-
-- `.pdf`
-- `.txt`
-
-PDFs are loaded using `PyPDFLoader`, with `UnstructuredPDFLoader` used as a fallback. TXT files are loaded with UTF-8 encoding.
-
-### 3. Text splitting
-
-Documents are split using LangChain's `RecursiveCharacterTextSplitter`.
-
-Current defaults:
-
-```text
-chunk_size = 700
-chunk_overlap = 100
-```
-
-The splitter uses paragraph, newline, sentence, space, and character boundaries as separators.
-
-### 4. Embeddings
-
-Each chunk is converted into a vector using:
-
-```text
-sentence-transformers/all-MiniLM-L6-v2
-```
-
-The embedding model is initialized lazily and reused through the application.
-
-### 5. Vector storage
-
-ChromaDB stores the document chunks persistently in:
-
-```text
-data/chroma_db/
-```
-
-The collection name is:
-
-```text
-document_chunks
-```
-
-Each chunk contains metadata including:
-
-```text
-document_id
-source
-page
-file_hash
-page_count
-chunk_id
-```
-
-### 6. Retrieval
-
-When a user asks a question, the question is used for semantic similarity search.
-
-The default configuration retrieves:
-
-```text
-TOP_K = 6
-```
-
-Retrieval can optionally be restricted to a selected document using `document_id`.
-
-The retriever uses Chroma's:
-
-```text
-similarity_search_with_relevance_scores()
-```
-
-A configurable relevance threshold exists, but the default is `-1.0`, which effectively disables score filtering because score ranges depend on the Chroma distance configuration.
-
-### 7. Context construction
-
-Retrieved chunks are formatted into a context containing:
-
-```text
-Source N: filename | Page N
-chunk content
-```
-
-The context is capped by:
-
-```text
-MAX_CONTEXT_CHARS = 12000
-```
-
-### 8. LLM generation
-
-The retrieved context and user's question are passed to the Groq-hosted model through LangChain's `ChatOpenAI` integration using Groq's OpenAI-compatible endpoint.
-
-Current default model:
-
-```text
-openai/gpt-oss-20b
-```
-
-Temperature is set to:
-
-```text
-0
-```
-
-The prompt instructs the model to answer only from supplied document context, avoid outside knowledge, avoid inventing facts/citations, and use the fixed fallback when the answer is not present:
-
-```text
-I could not find this information in the uploaded documents.
-```
-
-### 9. Sources
-
-Each returned source contains:
-
-```text
-document_id
-filename
-page
-chunk_id
-score
-```
-
-The frontend groups sources by document and displays relevant pages.
-
-## Duplicate Prevention
-
-Duplicate prevention uses a SHA-256 hash of the complete uploaded file content.
-
-```text
-Uploaded file
-      │
-      ▼
-SHA-256(content)
-      │
-      ▼
-Check ChromaDB
-      │
- ┌────┴────┐
- │         │
-Exists    New
- │         │
- ▼         ▼
-Return    Create UUID
-existing  Save + index
-document
-```
-
-This prevents the same file content from being indexed multiple times even if it is uploaded again.
-
-The frontend also checks the returned `document_id` before adding an uploaded document to React state.
-
-## Document-Specific Search
-
-Users can select a document in the frontend.
-
-When selected, the frontend sends its `document_id` with the query. The retriever applies the Chroma metadata filter:
-
-```python
-{"document_id": document_id}
-```
-
-This supports both global search and search within one selected document.
-
-## API Endpoints
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/health` | Health check |
-| POST | `/documents/upload` | Upload and index a document |
-| GET | `/documents` | List indexed documents |
-| POST | `/query` | Ask a question using RAG |
-| DELETE | `/documents/{document_id}` | Delete a document and its indexed chunks |
-
-### Query request
-
-```json
-{
-  "question": "What is this document about?",
-  "document_id": null,
-  "top_k": 6
-}
-```
-
-`document_id` is optional. `top_k` defaults to 6 and is constrained between 1 and 20.
-
-### Query response
-
-```json
-{
-  "answer": "Generated answer based on the document context.",
-  "sources": [
-    {
-      "document_id": "document-uuid",
-      "filename": "example.pdf",
-      "page": 2,
-      "chunk_id": "document-uuid_1",
-      "score": 0.1234
-    }
-  ]
-}
-```
-
-## Project Structure
-
-```text
-ai-document-intelligence/
-│
-├── backend/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── app/
-│       ├── config.py
-│       ├── document_loader.py
-│       ├── document_service.py
-│       ├── embeddings.py
-│       ├── llm.py
-│       ├── main.py
-│       ├── rag.py
-│       ├── retriever.py
-│       ├── schemas.py
-│       ├── text_splitter.py
-│       └── vector_store.py
-│
-├── frontend/
-│   └── src/
-│       ├── components/
-│       │   ├── Chat.jsx
-│       │   ├── DocumentList.jsx
-│       │   ├── DocumentUpload.jsx
-│       │   ├── Header.jsx
-│       │   └── SourceCard.jsx
-│       ├── services/
-│       │   └── api.js
-│       ├── App.jsx
-│       ├── main.jsx
-│       └── index.css
-│
-├── data/
-│   ├── uploaded_docs/
-│   └── chroma_db/
-│
-├── docker-compose.yml
-├── .dockerignore
-└── .env
-```
-
-## Configuration
-
-Example environment variables:
-
-```env
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=openai/gpt-oss-20b
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-CHUNK_SIZE=700
-CHUNK_OVERLAP=100
-TOP_K=6
-MAX_CONTEXT_CHARS=12000
-MIN_RELEVANCE_SCORE=-1.0
-```
-
-**Never commit the real `.env` file or API key to GitHub.**
-
-## Running Locally
+## Run locally
 
 ### Backend
 
 ```bash
 cd backend
+python -m venv .venv
+# Windows: .venv\\Scripts\\activate
+# macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env  # Windows PowerShell: Copy-Item .env.example .env
+# Set GROQ_API_KEY in .env before asking questions
 uvicorn app.main:app --reload
 ```
 
-API:
-
-```text
-http://localhost:8000
-```
-
-Swagger:
-
-```text
-http://localhost:8000/docs
-```
+The API is at `http://localhost:8000`; Swagger is at `/docs`. `DATA_DIR` defaults to the repository-root `data/` directory when started from the backend directory. Override it with an absolute path if preferred.
 
 ### Frontend
 
-In another terminal:
-
 ```bash
 cd frontend
-npm install
+cp .env.example .env
+npm install --package-lock-only --ignore-scripts  # refresh lock after dependency changes
+npm ci
 npm run dev
 ```
 
-Frontend:
+The Vite development server defaults to `http://localhost:5173`. `VITE_API_URL` defaults to `http://localhost:8000`.
 
-```text
-http://localhost:5173
-```
+## Configuration
 
-## Running with Docker
+Copy `backend/.env.example` to `backend/.env` for local backend development. The frontend has `frontend/.env.example`. Important backend variables:
 
-Build:
+| Variable | Default | Purpose |
+|---|---:|---|
+| `GROQ_API_KEY` | unset | Groq API credential; never commit it |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Groq model name |
+| `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Local embedding model |
+| `DATA_DIR` | `./data` at project root | Persistent uploads, vector DB, registry |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `700` / `100` | Text splitting settings |
+| `TOP_K` | `6` | Retrieved chunks |
+| `MAX_CONTEXT_CHARS` | `12000` | Context character budget |
+| `MAX_UPLOAD_MB` | `10` | Upload cap; enforced while reading |
+| `MIN_RELEVANCE_SCORE` | `0.0` | Cosine relevance threshold; zero disables filtering |
+| `USE_MMR` | `false` | Enable MMR retrieval |
+| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins |
 
-```bash
-docker compose build
-```
+## API
 
-Start:
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Service status, Groq-key-configured boolean, vector-store reachability |
+| POST | `/documents/upload` | Upload and index PDF/TXT |
+| GET | `/documents` | Registry-backed document list, including pages and chunks |
+| DELETE | `/documents/{document_id}` | Remove vector chunks, uploaded file, and registry record |
+| POST | `/query` | Standard JSON RAG query |
+| POST | `/query/stream` | Server-Sent Events: `token` events followed by `final` sources |
 
-```bash
-docker compose up
-```
-
-Stop:
-
-```bash
-docker compose down
-```
-
-Health check:
-
-```bash
-curl http://localhost:8000/health
-```
-
-Expected:
+Query example:
 
 ```json
-{"status":"ok"}
+{
+  "question": "What is the attendance requirement?",
+  "document_id": null,
+  "top_k": 6,
+  "history": [
+    {"role": "user", "content": "Summarize the attendance policy."},
+    {"role": "assistant", "content": "It describes minimum attendance."}
+  ]
+}
 ```
 
-The Compose setup mounts:
+`history` is optional and limited to six messages. `top_k` must be 1–20. The response includes `answer`, `sources`, and `retrieval_latency_seconds`. Source pages are one-indexed in both the context header and API response; stored Chroma page metadata remains zero-indexed.
 
-```text
-./data:/app/data
-```
+## Tests
 
-so uploaded documents and ChromaDB data persist outside the container.
-
-During the current development setup, the React frontend is started separately with:
+Tests use deterministic fake embeddings and a fake LLM; they do not require a Groq key or model download.
 
 ```bash
-cd frontend
-npm run dev
+cd backend
+pip install -r requirements-dev.txt
+pytest -q
+
+cd ../frontend
+npm ci
+npm test
+npm run build
 ```
 
-## Error Handling
+## Evaluation
 
-### Upload
+See [`eval/README.md`](eval/README.md). Replace the placeholder dataset with real questions and expected filenames/pages from your own corpus. Run the API evaluation with:
 
-- PDF/TXT only
-- Empty files rejected
-- Frontend maximum size: 10 MB
-- Backend validates extension and empty content
-- Failed indexing removes the partially saved file
+```bash
+python eval/run_eval.py --dataset eval/dataset.json --api http://localhost:8000 --top-k 6
+```
 
-### API
+The report contains Hit@K, MRR, mean retrieval latency, answer keyword coverage, and out-of-scope fallback accuracy. The optional local chunk-size sweep re-indexes local documents at 500/700/1000 characters and **deletes/rebuilds the local Chroma collection and registry**; back up `data/` first. No benchmark scores are included here because no user-specific evaluation corpus has been measured.
 
-The frontend preserves FastAPI error details when available. Query network failures produce a user-friendly backend connection message.
+## Docker
 
-### Delete
+From the repository root, copy `backend/.env.example` to `.env`, set `GROQ_API_KEY`, then run:
 
-The frontend disables the delete button while deletion is in progress and clears the selected document when it is deleted.
+```bash
+docker compose up --build
+```
 
-## Persistence
+The production frontend is served at `http://localhost:8080`; the API is at `http://localhost:8000`. Compose mounts `./data` at `/app/data`, uses a named Hugging Face cache volume, and waits for the backend healthcheck before starting the frontend. The local Vite workflow remains available with `npm run dev`.
+
+## Design decisions and trade-offs
+
+- **Chunk size (700) and overlap (100):** a practical starting point that preserves nearby context without creating excessive overlap. The right setting depends on document layout and should be selected with the included evaluation script, not assumed to be universally optimal.
+- **Cosine vs. L2:** cosine is configured explicitly because this application compares embedding direction and uses Chroma's normalized relevance-score API. Existing Chroma collections created with the old default distance metric must be re-indexed: stop the app, delete `data/chroma_db/`, and upload the documents again. Keep a backup if the old index matters.
+- **Top-K (6):** limits prompt size and latency while allowing multiple passages. Larger values can add noise and consume more context; tune using Hit@K/MRR and answer quality on your own corpus.
+- **Why Groq:** it provides hosted inference through an OpenAI-compatible endpoint, so LangChain's `ChatOpenAI` client can be used without a provider-specific chain. It introduces network dependency, rate limits, and key management.
+- **Why Chroma:** it is a lightweight persistent vector store suitable for a local/single-service project. At roughly 10,000 documents (and potentially far more chunks), ingestion, metadata filtering, memory, concurrent writes, backup/recovery, and query latency need load testing; a managed or distributed vector database and background ingestion workers may become appropriate. A document count alone does not predict chunk count.
+- **Duplicate-upload race handling:** a process-wide re-entrant lock covers hash lookup, indexing, and registry write, so concurrent uploads in the same backend process cannot both index identical content. Multi-process/multi-host deployments need a cross-process lock or transactional database uniqueness constraint.
+- **MMR:** optional and off by default. It trades a little retrieval work for diversity among returned chunks. Hybrid BM25 + vector search was deliberately not added because a robust corpus-wide sparse index, synchronization, and score fusion would increase complexity beyond the reliability of this change set.
+- **Registry:** JSON is intentionally small and simple for this single-instance project. For multi-worker deployments or frequent writes, migrate it to SQLite/PostgreSQL with transactional uniqueness and locking.
+
+## Known limitations
+
+- PDFs are text-extracted, not OCR-processed. Scanned/image-only PDFs return HTTP 422 with a clear extractable-text error; OCR is intentionally not bundled.
+- Embedding model initialization requires the model to be available locally or downloadable on first use. The Hugging Face Docker volume caches it across container recreation.
+- Groq queries require internet access and a valid API key. Backend tests mock the LLM and embeddings and do not validate provider availability.
+- JSON registry locking is process-local; it is not a distributed lock.
+- MMR is implemented; hybrid BM25/vector retrieval is not implemented.
+- Streaming fallback can retry the standard endpoint if the stream fails, which may repeat inference if the provider completed a response but the connection dropped before the final event.
+- The example evaluation dataset contains illustrative placeholders only. Metrics are meaningful only after replacing it with labeled questions from your own documents.
+- Existing cosine/L2 collections are not migrated automatically; re-index them after changing the metric.
+
+## Project structure
 
 ```text
-data/uploaded_docs/
-    Original uploaded files
-
-data/chroma_db/
-    ChromaDB vector store
+backend/              FastAPI app, requirements, pytest suite
+frontend/             React/Vite app, components, Vitest suite
+  Dockerfile          Production Nginx build
+  nginx.conf          SPA fallback routing
+eval/                 Placeholder dataset and reproducible evaluation
+docs/                 Interview preparation notes
+.github/workflows/    CI pipeline
+data/                 Runtime data (not committed or packaged)
+docker-compose.yml
 ```
-
-ChromaDB uses a persistent directory rather than an in-memory store.
-
-## Technology Stack
-
-**Frontend:** React, JavaScript/JSX, Vite, Tailwind CSS
-
-**Backend:** Python, FastAPI, Uvicorn, Pydantic
-
-**AI/RAG:** LangChain, Hugging Face Sentence Transformers, ChromaDB, Groq, OpenAI-compatible LLM integration
-
-**Deployment:** Docker, Docker Compose, WSL 2 for Windows development
-
-## Design Decisions
-
-### Why RAG?
-
-The application answers questions about user-provided documents. RAG retrieves relevant document chunks and provides them to the LLM as context rather than relying only on general model knowledge.
-
-### Why embeddings?
-
-Embeddings represent text as vectors, allowing semantic similarity search rather than relying only on exact keyword matches.
-
-### Why chunking?
-
-Chunking divides documents into smaller, retrievable sections. Overlap helps preserve context across chunk boundaries.
-
-### Why ChromaDB?
-
-Chroma provides vector storage and similarity search with persistent local storage, fitting the project's indexing workflow.
-
-### Why source metadata?
-
-Source metadata makes generated answers traceable to uploaded documents and pages.
-
-## Current Limitations
-
-- Supported document formats are currently PDF and TXT.
-- Relevance-score filtering is disabled by default until retrieval scores are evaluated on a representative dataset.
-- The frontend currently runs separately from the Dockerized backend during development.
-- No measured retrieval or answer accuracy score is claimed yet.
-
-## Future Improvements
-
-- Build a curated RAG evaluation dataset.
-- Measure retrieval recall/precision and answer faithfulness.
-- Tune chunk size and overlap using evaluation results.
-- Calibrate the relevance-score threshold.
-- Add authentication and per-user document isolation.
-- Add more document formats such as DOCX.
-- Add streaming LLM responses.
-- Containerize the production frontend.
-- Add automated tests and CI/CD.
-- Add observability and structured logging.
-
-## Interview Summary
-
-> **AI Document Intelligence is a full-stack RAG application that lets users upload PDF/TXT documents and ask natural-language questions about them. Documents are loaded, recursively chunked, embedded using a Hugging Face sentence-transformer model, and persisted in ChromaDB. At query time, the system performs semantic Top-K retrieval, optionally filters by document ID, builds a bounded context, and sends that context to a Groq-hosted LLM through an OpenAI-compatible interface. The model is instructed to answer only from the retrieved context, and the API returns source document and page metadata for traceability. The FastAPI backend is Dockerized with persistent data mounted from the host.**
