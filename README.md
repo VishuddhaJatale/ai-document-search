@@ -208,7 +208,7 @@ The frontend is served at `http://localhost:8080` and the API at `http://localho
 - **Rate limiting is in-memory and per client IP.** It protects a single-process deployment; use a shared Redis-backed limiter behind a trusted proxy for multiple workers/replicas. Configure proxy handling carefully so clients cannot spoof their IP.
 - PDFs are text-extracted with PyPDF, with no OCR. Scanned, image-only or corrupt PDFs return HTTP 422 with a clear message.
 - The relevance threshold (`MIN_RELEVANCE_SCORE`) is applied per chunk, not to the best chunk, so a high value can drop useful lower-ranked chunks. It is off by default.
-- Retrieval is dense-only. Exact-term queries such as acronyms can rank poorly, and a single summary slide can occupy the top result for several questions.
+- Hybrid retrieval scans stored Chroma chunk text to build BM25 candidates on each query. This is suitable for a small portfolio corpus; use a maintained lexical index for larger corpora. Compare hybrid against dense-only with the evaluation runner.
 - The source list in a response contains all retrieved chunks, not only the ones the model used.
 - The embedding model must be available locally or downloadable on first use. The Docker volume caches it.
 - Groq queries need internet access and a valid key. Backend tests mock the LLM and embeddings and do not validate provider availability.
