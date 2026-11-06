@@ -87,7 +87,12 @@ Copy `backend/.env.example` to `backend/.env` for local development. Main backen
 | `MAX_CONTEXT_CHARS` | `12000` | Context character budget |
 | `MAX_UPLOAD_MB` | `10` | Upload cap, enforced while reading |
 | `MIN_RELEVANCE_SCORE` | `0.0` | Per-chunk cosine relevance threshold. `0` disables filtering |
-| `USE_MMR` | `false` | Enable MMR retrieval (MMR results do not carry calibrated relevance scores) |\n| `RETRIEVAL_MODE` | `hybrid` | `hybrid` combines BM25 + dense results using reciprocal rank fusion; `dense` is the baseline |\n| `API_KEY` | unset | Shared API key used when protection is enabled; use a long random value |\n| `REQUIRE_API_KEY` | `false` | Require `X-API-Key` for application endpoints; `/health` and CORS preflight remain public |\n| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per client IP in the rolling window |\n| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rolling rate-limit window in seconds |
+| `USE_MMR` | `false` | Enable MMR retrieval (MMR results do not carry calibrated relevance scores) |
+| `RETRIEVAL_MODE` | `hybrid` | `hybrid` combines BM25 + dense results using reciprocal rank fusion; `dense` is the baseline |
+| `API_KEY` | unset | Shared API key used when protection is enabled; use a long random value |
+| `REQUIRE_API_KEY` | `false` | Require `X-API-Key` for application endpoints; `/health` and CORS preflight remain public |
+| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per client IP in the rolling window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rolling rate-limit window in seconds |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:8080` | Comma-separated allowed origins |
 | `ANONYMIZED_TELEMETRY` | `False` | Chroma usage telemetry, off by default |
 
@@ -199,7 +204,8 @@ The frontend is served at `http://localhost:8080` and the API at `http://localho
 
 ## Known limitations
 
-- **Authentication is a shared API key, not user accounts.** It protects a single-owner/demo API but does not provide per-user identity or document isolation. Use HTTPS, a strong secret, and a proper identity provider/JWT + authorization layer for a multi-user public service. The browser stores the entered key in sessionStorage; it is not a substitute for server-side user authentication.\n- **Rate limiting is in-memory and per client IP.** It protects a single-process deployment; use a shared Redis-backed limiter behind a trusted proxy for multiple workers/replicas. Configure proxy handling carefully so clients cannot spoof their IP.
+- **Authentication is a shared API key, not user accounts.** It protects a single-owner/demo API but does not provide per-user identity or document isolation. Use HTTPS, a strong secret, and a proper identity provider/JWT + authorization layer for a multi-user public service. The browser stores the entered key in sessionStorage; it is not a substitute for server-side user authentication.
+- **Rate limiting is in-memory and per client IP.** It protects a single-process deployment; use a shared Redis-backed limiter behind a trusted proxy for multiple workers/replicas. Configure proxy handling carefully so clients cannot spoof their IP.
 - PDFs are text-extracted with PyPDF, with no OCR. Scanned, image-only or corrupt PDFs return HTTP 422 with a clear message.
 - The relevance threshold (`MIN_RELEVANCE_SCORE`) is applied per chunk, not to the best chunk, so a high value can drop useful lower-ranked chunks. It is off by default.
 - Retrieval is dense-only. Exact-term queries such as acronyms can rank poorly, and a single summary slide can occupy the top result for several questions.
