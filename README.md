@@ -212,9 +212,9 @@ The frontend is served at `http://localhost:8080` and the API at `http://localho
 
 ## Roadmap
 
-- Chunk-level evaluation labels (expected text snippets) instead of page labels, and a larger question set
-- Hybrid keyword + vector search, reranking and neighbouring-slide expansion, each measured against the baseline above
-- Authentication and rate limiting, then a public deployment
+- Expand the evaluation set with manually verified chunk IDs and held-out questions; manually score answer faithfulness/correctness
+- Consider a persistent lexical index or reranker only if evaluation shows a measurable gain
+- Replace shared-key auth and in-memory limiting with multi-user identity, authorization and distributed rate limiting before public multi-user deployment
 - SQLite registry for transactional uniqueness
 
 ## Project structure
