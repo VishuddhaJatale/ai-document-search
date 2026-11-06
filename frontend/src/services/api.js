@@ -1,4 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_KEY = import.meta.env.VITE_API_KEY || "";
+
+function authHeaders(extra = {}) {
+  return API_KEY ? { ...extra, "X-API-Key": API_KEY } : extra;
+}
 
 async function parseError(response, fallback) {
   const errorData = await response.json().catch(() => ({}));
@@ -8,20 +13,20 @@ async function parseError(response, fallback) {
 export async function uploadDocument(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch(`${API_BASE_URL}/documents/upload`, { method: "POST", body: formData });
+  const response = await fetch(`${API_BASE_URL}/documents/upload`, { method: "POST", headers: authHeaders(), body: formData });
   if (!response.ok) await parseError(response, "Failed to upload document");
   return response.json();
 }
 
 export async function deleteDocument(documentId) {
-  const response = await fetch(`${API_BASE_URL}/documents/${documentId}`, { method: "DELETE" });
+  const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(documentId)}`, { method: "DELETE", headers: authHeaders() });
   if (!response.ok) await parseError(response, "Failed to delete document");
   return response.json();
 }
 
 export async function getDocuments() {
-  const response = await fetch(`${API_BASE_URL}/documents`);
-  if (!response.ok) throw new Error("Failed to load documents");
+  const response = await fetch(`${API_BASE_URL}/documents`, { headers: authHeaders() });
+  if (!response.ok) await parseError(response, "Failed to load documents");
   return response.json();
 }
 
@@ -31,15 +36,12 @@ export async function queryDocuments(question, documentId = null, topK = 6, hist
     if (onToken) {
       try {
         const streamResponse = await fetch(`${API_BASE_URL}/query/stream`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+          method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(payload),
         });
         if (!streamResponse.ok || !streamResponse.body) throw new Error("Streaming unavailable");
         const reader = streamResponse.body.getReader();
         const decoder = new TextDecoder();
-        let buffer = "";
-        let answer = "";
-        let sources = [];
-        let finalReceived = false;
+        let buffer = "", answer = "", sources = [], finalReceived = false;
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -63,7 +65,7 @@ export async function queryDocuments(question, documentId = null, topK = 6, hist
       }
     }
     const response = await fetch(`${API_BASE_URL}/query`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(payload),
     });
     if (!response.ok) await parseError(response, "Failed to get answer");
     return response.json();
