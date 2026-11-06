@@ -55,7 +55,7 @@ def retrieve(question: str, k: int = 6, document_id: Optional[str] = None) -> Li
     store = get_vector_store()
     filters = {"document_id": document_id} if document_id else None
     dense = _dense_results(store, question, max(k * 3, 12), filters)
-    if RETRIEVAL_MODE == "dense" or not dense:
+    if RETRIEVAL_MODE == "dense":
         return dense[:k]
 
     # Build lexical candidates from the same filtered Chroma corpus. This avoids
