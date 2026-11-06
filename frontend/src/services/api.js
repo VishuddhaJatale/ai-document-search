@@ -1,5 +1,11 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-const API_KEY = import.meta.env.VITE_API_KEY || "";
+let API_KEY = sessionStorage.getItem("adi_api_key") || "";
+
+export function setApiKey(value) {
+  API_KEY = value.trim();
+  if (API_KEY) sessionStorage.setItem("adi_api_key", API_KEY);
+  else sessionStorage.removeItem("adi_api_key");
+}
 
 function authHeaders(extra = {}) {
   return API_KEY ? { ...extra, "X-API-Key": API_KEY } : extra;
@@ -8,6 +14,12 @@ function authHeaders(extra = {}) {
 async function parseError(response, fallback) {
   const errorData = await response.json().catch(() => ({}));
   throw new Error(errorData.detail || fallback);
+}
+
+export async function getHealth() {
+  const response = await fetch(`${API_BASE_URL}/health`);
+  if (!response.ok) throw new Error("Backend health check failed");
+  return response.json();
 }
 
 export async function uploadDocument(file) {
@@ -60,7 +72,8 @@ export async function queryDocuments(question, documentId = null, topK = 6, hist
         }
         if (!answer || !finalReceived) throw new Error("Incomplete streaming response");
         return { answer, sources };
-      } catch {
+      } catch (error) {
+        if (error?.message?.includes("valid API key")) throw error;
         // A failed or interrupted stream falls back to the stable JSON endpoint.
       }
     }
