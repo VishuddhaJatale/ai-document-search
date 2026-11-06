@@ -67,3 +67,21 @@ def test_inflight_hash_is_not_adopted_as_legacy_record(real_store):
     finally:
         document_service._inflight.pop(file_hash, None)
     assert first.status == "indexed"
+
+
+
+def test_hybrid_retrieval_with_real_chroma(real_store, monkeypatch):
+    from langchain_core.documents import Document
+    from app import retriever
+
+    doc = Document(
+        page_content="Attendance eligibility requires a minimum of 75 percent.",
+        metadata={"document_id": "hybrid-doc", "source": "attendance.txt", "page": 0, "chunk_id": "hybrid-chunk"},
+    )
+    vector_store.add_chunks([doc], ["hybrid-chunk"])
+    monkeypatch.setattr(retriever, "RETRIEVAL_MODE", "hybrid")
+    monkeypatch.setattr(retriever, "USE_MMR", False)
+    monkeypatch.setattr(retriever, "MIN_RELEVANCE_SCORE", 0.0)
+    results = retriever.retrieve("minimum attendance eligibility 75 percent", k=3)
+    assert results
+    assert results[0][0].metadata["chunk_id"] == "hybrid-chunk"

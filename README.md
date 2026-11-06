@@ -11,12 +11,12 @@ A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDF or TXT
 - PDF/TXT upload with a streamed 10 MB limit, extension and content checks, and robust TXT decoding (UTF-8, then cp1252, then latin-1).
 - SHA-256 duplicate detection with a synchronized JSON document registry. Concurrent identical uploads are safe: one request indexes, the others report `already_exists`.
 - Persistent Chroma vector storage using cosine distance.
-- Configurable chunk size, overlap, Top-K, context budget, optional relevance threshold and optional MMR retrieval.
+- Configurable chunk size, overlap, Top-K and context budget; dense retrieval or hybrid BM25 + dense retrieval with reciprocal-rank fusion; optional MMR and dense relevance threshold.
 - Follow-up question rewriting using up to six recent chat messages.
 - JSON query endpoint, SSE token-streaming endpoint (with a frontend JSON fallback), and a retrieval-only `/retrieve` endpoint for debugging and evaluation.
 - Grounded answers: the model is instructed to refuse when the documents do not contain the answer, and retrieved text is treated as untrusted data (prompt-injection-resistant instructions).
 - Markdown-rendered answers, source citations, per-document page and chunk counts, and clear-chat UX.
-- Retrieval, LLM and total timing logs. `/health` reports the API key as a boolean and vector-store reachability.
+- Optional API-key protection for all application endpoints, session-only sign-in in the React UI, and per-client request rate limiting (including failed authentication attempts). `/health` reports configuration without exposing secrets.
 - Docker Compose setup: backend, production Nginx frontend, persistent data, and a Hugging Face model cache volume.
 - Automated tests (backend and frontend) and CI on every push.
 
@@ -87,7 +87,12 @@ Copy `backend/.env.example` to `backend/.env` for local development. Main backen
 | `MAX_CONTEXT_CHARS` | `12000` | Context character budget |
 | `MAX_UPLOAD_MB` | `10` | Upload cap, enforced while reading |
 | `MIN_RELEVANCE_SCORE` | `0.0` | Per-chunk cosine relevance threshold. `0` disables filtering |
-| `USE_MMR` | `false` | Enable MMR retrieval |
+| `USE_MMR` | `false` | Enable MMR retrieval (MMR results do not carry calibrated relevance scores) |
+| `RETRIEVAL_MODE` | `hybrid` | `hybrid` combines BM25 + dense results using reciprocal rank fusion; `dense` is the baseline |
+| `API_KEY` | unset | Shared API key used when protection is enabled; use a long random value |
+| `REQUIRE_API_KEY` | `false` | Require `X-API-Key` for application endpoints; `/health` and CORS preflight remain public |
+| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per client IP in the rolling window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Rolling rate-limit window in seconds |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:8080` | Comma-separated allowed origins |
 | `ANONYMIZED_TELEMETRY` | `False` | Chroma usage telemetry, off by default |
 
@@ -117,7 +122,7 @@ Query example:
 }
 ```
 
-`question` must be 1–4000 characters. `history` is optional and limited to six messages. `top_k` must be 1–20. The response contains `answer`, `sources` and `retrieval_latency_seconds`. Source pages are one-indexed in the API response; stored Chroma page metadata is zero-indexed.
+`question` must be 1–4000 characters. `history` is optional and limited to six messages. `top_k` must be 1–20. The response contains `answer`, `sources` and `retrieval_latency_seconds`. Source pages are one-indexed in the API response; stored Chroma page metadata is zero-indexed. When `REQUIRE_API_KEY=true`, send `X-API-Key: <API_KEY>` to every application endpoint. The React UI prompts for the key and retains it in `sessionStorage` for the current browser tab/session.
 
 ## Tests and CI
 
@@ -126,7 +131,7 @@ Tests use deterministic fake embeddings and a fake LLM, so they need no Groq key
 ```bash
 cd backend
 pip install -r requirements-dev.txt
-pytest -q                 # 25 tests
+pytest -q
 
 cd ../frontend
 npm ci
@@ -149,7 +154,7 @@ python eval/run_eval.py --dataset eval/dataset.json --api http://localhost:8000 
 python eval/run_eval.py --dataset eval/dataset.json --api http://localhost:8000 --top-k 6
 ```
 
-Hit@K and MRR are computed from the `/retrieve` endpoint, so they measure the retriever only.
+Hit@K and MRR are computed from the `/retrieve` endpoint, so they measure the retriever only. The original baseline below was measured with dense-only retrieval; do not treat it as a measured hybrid result. Use `eval/README.md` to compare dense and hybrid under the same corpus and labels.
 
 ### Baseline results
 
@@ -199,10 +204,11 @@ The frontend is served at `http://localhost:8080` and the API at `http://localho
 
 ## Known limitations
 
-- **No authentication or rate limiting.** Add both before exposing the API publicly, because anyone could delete documents or consume the Groq quota.
+- **Authentication is a shared API key, not user accounts.** It protects a single-owner/demo API but does not provide per-user identity or document isolation. Use HTTPS, a strong secret, and a proper identity provider/JWT + authorization layer for a multi-user public service. The browser stores the entered key in sessionStorage; it is not a substitute for server-side user authentication.
+- **Rate limiting is in-memory and per client IP.** It protects a single-process deployment; use a shared Redis-backed limiter behind a trusted proxy for multiple workers/replicas. Configure proxy handling carefully so clients cannot spoof their IP.
 - PDFs are text-extracted with PyPDF, with no OCR. Scanned, image-only or corrupt PDFs return HTTP 422 with a clear message.
 - The relevance threshold (`MIN_RELEVANCE_SCORE`) is applied per chunk, not to the best chunk, so a high value can drop useful lower-ranked chunks. It is off by default.
-- Retrieval is dense-only. Exact-term queries such as acronyms can rank poorly, and a single summary slide can occupy the top result for several questions.
+- Hybrid retrieval scans stored Chroma chunk text to build BM25 candidates on each query. This is suitable for a small portfolio corpus; use a maintained lexical index for larger corpora. Compare hybrid against dense-only with the evaluation runner.
 - The source list in a response contains all retrieved chunks, not only the ones the model used.
 - The embedding model must be available locally or downloadable on first use. The Docker volume caches it.
 - Groq queries need internet access and a valid key. Backend tests mock the LLM and embeddings and do not validate provider availability.
@@ -212,9 +218,9 @@ The frontend is served at `http://localhost:8080` and the API at `http://localho
 
 ## Roadmap
 
-- Chunk-level evaluation labels (expected text snippets) instead of page labels, and a larger question set
-- Hybrid keyword + vector search, reranking and neighbouring-slide expansion, each measured against the baseline above
-- Authentication and rate limiting, then a public deployment
+- Expand the evaluation set with manually verified chunk IDs and held-out questions; manually score answer faithfulness/correctness
+- Consider a persistent lexical index or reranker only if evaluation shows a measurable gain
+- Replace shared-key auth and in-memory limiting with multi-user identity, authorization and distributed rate limiting before public multi-user deployment
 - SQLite registry for transactional uniqueness
 
 ## Project structure
