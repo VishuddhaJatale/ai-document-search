@@ -37,6 +37,7 @@ function App() {
         if (!active) return;
         setKeyRequired(Boolean(health.api_key_required));
         if (!health.api_key_required) {
+          setApiKey("");
           await loadDocuments();
         } else if (sessionStorage.getItem("adi_api_key")) {
           await loadDocuments();
@@ -57,6 +58,7 @@ function App() {
     try {
       const docs = await getDocuments();
       setDocuments(docs);
+      setDocumentsError("");
       setAuthenticated(true);
       setApiKeyInput("");
     } catch (error) {
