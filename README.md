@@ -1,7 +1,5 @@
 # AI Document Intelligence
 
-[![CI](https://github.com/VishuddhaJatale/ai-document-search/actions/workflows/ci.yml/badge.svg)](https://github.com/VishuddhaJatale/ai-document-search/actions/workflows/ci.yml)
-
 A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDF or TXT files, index their text, and ask questions that are answered **only from your documents**, with source page references.
 
 **Stack:** React + Vite + Tailwind (UI) · FastAPI (API) · LangChain + ChromaDB (retrieval) · Hugging Face `sentence-transformers/all-MiniLM-L6-v2` (embeddings) · Groq-hosted LLM via LangChain's OpenAI-compatible `ChatOpenAI` client (answers).
