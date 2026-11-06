@@ -26,12 +26,8 @@ RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid").lower()
 if RETRIEVAL_MODE not in {"dense", "hybrid"}:
     raise ValueError("RETRIEVAL_MODE must be 'dense' or 'hybrid'")
 
-API_KEY = os.getenv("API_KEY", "")
-REQUIRE_API_KEY = os.getenv("REQUIRE_API_KEY", "false").lower() in {"1", "true", "yes"}
 RATE_LIMIT_REQUESTS = max(1, int(os.getenv("RATE_LIMIT_REQUESTS", "60")))
 RATE_LIMIT_WINDOW_SECONDS = max(1, int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")))
-if REQUIRE_API_KEY and not API_KEY:
-    raise ValueError("REQUIRE_API_KEY is enabled but API_KEY is not configured")
 
 CORS_ORIGINS = [v.strip() for v in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if v.strip()]
 for directory in (UPLOAD_DIR, VECTOR_DIR):
