@@ -16,7 +16,7 @@ A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDF or TXT
 - JSON query endpoint, SSE token-streaming endpoint (with a frontend JSON fallback), and a retrieval-only `/retrieve` endpoint for debugging and evaluation.
 - Grounded answers: the model is instructed to refuse when the documents do not contain the answer, and retrieved text is treated as untrusted data (prompt-injection-resistant instructions).
 - Markdown-rendered answers, source citations, per-document page and chunk counts, and clear-chat UX.
-- Optional API-key protection for all application endpoints, session-only sign-in in the React UI, and per-client request rate limiting (including failed authentication attempts). `/health` reports configuration without exposing secrets.
+- Per-client request rate limiting to protect the API from excessive requests. The single-owner demo opens directly without an API-key sign-in screen.
 - Docker Compose setup: backend, production Nginx frontend, persistent data, and a Hugging Face model cache volume.
 - Automated tests (backend and frontend) and CI on every push.
 
@@ -100,7 +100,7 @@ Copy `backend/.env.example` to `backend/.env` for local development. Main backen
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/health` | Service status, API-key-configured boolean, vector-store reachability |
+| GET | `/health` | Service status, retrieval mode and vector-store reachability |
 | POST | `/documents/upload` | Upload and index a PDF or TXT file |
 | GET | `/documents` | Registry-backed document list with pages and chunks |
 | DELETE | `/documents/{document_id}` | Remove vector chunks, uploaded file and registry record |
@@ -122,7 +122,7 @@ Query example:
 }
 ```
 
-`question` must be 1–4000 characters. `history` is optional and limited to six messages. `top_k` must be 1–20. The response contains `answer`, `sources` and `retrieval_latency_seconds`. Source pages are one-indexed in the API response; stored Chroma page metadata is zero-indexed. When `REQUIRE_API_KEY=true`, send `X-API-Key: <API_KEY>` to every application endpoint. The React UI prompts for the key and retains it in `sessionStorage` for the current browser tab/session.
+`question` must be 1–4000 characters. `history` is optional and limited to six messages. `top_k` must be 1–20. The response contains `answer`, `sources` and `retrieval_latency_seconds`. Source pages are one-indexed in the API response; stored Chroma page metadata is zero-indexed.
 
 ## Tests and CI
 
@@ -220,7 +220,7 @@ The frontend is served at `http://localhost:8080` and the API at `http://localho
 
 - Expand the evaluation set with manually verified chunk IDs and held-out questions; manually score answer faithfulness/correctness
 - Consider a persistent lexical index or reranker only if evaluation shows a measurable gain
-- Replace shared-key auth and in-memory limiting with multi-user identity, authorization and distributed rate limiting before public multi-user deployment
+- Add proper user identity, document-level authorization and distributed rate limiting before public multi-user deployment
 - SQLite registry for transactional uniqueness
 
 ## Project structure
