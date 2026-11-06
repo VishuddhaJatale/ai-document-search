@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Header from "./components/Header";
 import DocumentUpload from "./components/DocumentUpload";
 import DocumentList from "./components/DocumentList";
@@ -17,7 +17,7 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [checkingBackend, setCheckingBackend] = useState(true);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     setDocumentsError("");
     try {
       const existingDocuments = await getDocuments();
@@ -27,7 +27,7 @@ function App() {
       setDocumentsError(error.message || "Failed to load documents");
       if (error.message?.includes("API key")) setAuthenticated(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -48,7 +48,7 @@ function App() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [loadDocuments]);
 
   const handleKeySubmit = async (event) => {
     event.preventDefault();
