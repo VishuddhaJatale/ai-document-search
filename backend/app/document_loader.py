@@ -1,10 +1,23 @@
+import logging
 from pathlib import Path
 from typing import List
 
-from langchain_community.document_loaders import PyPDFLoader, UnstructuredPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 
+logger = logging.getLogger(__name__)
 SUPPORTED_EXTENSIONS = {".pdf", ".txt"}
+NO_TEXT_MESSAGE = "No extractable text found, the PDF may be scanned or corrupt"
+
+
+def decode_text(raw: bytes) -> str:
+    """Decode text bytes: UTF-8 first, then cp1252, then latin-1 as a last resort."""
+    for encoding in ("utf-8", "cp1252"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1", errors="replace")
 
 
 def load_document(file_path: Path) -> List[Document]:
@@ -12,27 +25,14 @@ def load_document(file_path: Path) -> List[Document]:
     if suffix == ".pdf":
         try:
             docs = PyPDFLoader(str(file_path)).load()
-            if docs and any(doc.page_content.strip() for doc in docs):
-                return docs
-        except Exception:
-            pass
-        try:
-            docs = UnstructuredPDFLoader(str(file_path)).load()
-            if docs and any(doc.page_content.strip() for doc in docs):
-                return docs
         except Exception as exc:
-            raise ValueError("No extractable text found, the PDF may be scanned") from exc
-        raise ValueError("No extractable text found, the PDF may be scanned")
+            logger.warning("PDF could not be parsed: %s", exc)
+            raise ValueError(NO_TEXT_MESSAGE) from exc
+        if not any(doc.page_content.strip() for doc in docs):
+            raise ValueError(NO_TEXT_MESSAGE)
+        return docs
 
     if suffix == ".txt":
-        raw = file_path.read_bytes()
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            try:
-                text = raw.decode("cp1252")
-            except UnicodeDecodeError:
-                text = raw.decode("latin-1", errors="replace")
-        return [Document(page_content=text, metadata={"page": 0})]
+        return [Document(page_content=decode_text(file_path.read_bytes()), metadata={"page": 0})]
 
     raise ValueError(f"Unsupported file type: {suffix}")

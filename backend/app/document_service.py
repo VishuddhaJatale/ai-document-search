@@ -78,7 +78,10 @@ def _find_duplicate_locked(safe_name: str, file_hash: str):
         registry = [item for item in registry if item["file_hash"] != file_hash]
         _write_registry(registry)
     # Also detect records indexed before the registry was introduced.
-    if existing_vector:
+    # Skip this while the same file is still being indexed by another request:
+    # its chunks are already in Chroma but its registry record is written moments
+    # later, and adopting the vector here would create a duplicate registry entry.
+    if existing_vector and file_hash not in _inflight:
         doc_id = existing_vector.get("document_id", "")
         record = {"document_id": doc_id, "filename": existing_vector.get("source", safe_name), "pages": int(existing_vector.get("page_count", 0)), "chunks": int(existing_vector.get("chunks", 0)), "file_hash": file_hash, "uploaded_at": datetime.now(timezone.utc).isoformat()}
         registry.append(record)

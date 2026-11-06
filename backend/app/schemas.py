@@ -13,7 +13,7 @@ class ChatMessage(BaseModel):
     content: str = Field(min_length=1, max_length=12000)
 
 class QueryRequest(BaseModel):
-    question: str = Field(min_length=1)
+    question: str = Field(min_length=1, max_length=4000)
     document_id: Optional[str] = None
     top_k: Optional[int] = Field(default=None, ge=1, le=20)
     history: List[ChatMessage] = Field(default_factory=list, max_length=6)
@@ -27,6 +27,10 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
+    sources: List[Source] = Field(default_factory=list)
+    retrieval_latency_seconds: Optional[float] = None
+
+class RetrieveResponse(BaseModel):
     sources: List[Source] = Field(default_factory=list)
     retrieval_latency_seconds: Optional[float] = None
 

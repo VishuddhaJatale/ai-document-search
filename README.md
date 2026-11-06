@@ -92,6 +92,7 @@ Copy `backend/.env.example` to `backend/.env` for local backend development. The
 | POST | `/documents/upload` | Upload and index PDF/TXT |
 | GET | `/documents` | Registry-backed document list, including pages and chunks |
 | DELETE | `/documents/{document_id}` | Remove vector chunks, uploaded file, and registry record |
+| POST | `/retrieve` | Retrieval only (no LLM call): ranked sources for a question; used for debugging and retrieval evaluation |
 | POST | `/query` | Standard JSON RAG query |
 | POST | `/query/stream` | Server-Sent Events: `token` events followed by `final` sources |
 
@@ -134,7 +135,7 @@ See [`eval/README.md`](eval/README.md). Replace the placeholder dataset with rea
 python eval/run_eval.py --dataset eval/dataset.json --api http://localhost:8000 --top-k 6
 ```
 
-The report contains Hit@K, MRR, mean retrieval latency, answer keyword coverage, and out-of-scope fallback accuracy. The optional local chunk-size sweep re-indexes local documents at 500/700/1000 characters and **deletes/rebuilds the local Chroma collection and registry**; back up `data/` first. No benchmark scores are included here because no user-specific evaluation corpus has been measured.
+The report contains Hit@K, MRR, mean retrieval latency, answer keyword coverage, and out-of-scope fallback accuracy. Hit@K and MRR are computed from the `/retrieve` endpoint, so they measure the retriever only. Add `--skip-answers` for a fast, free, retrieval-only run with no LLM calls. The optional local chunk-size sweep re-indexes local documents at 500/700/1000 characters and **deletes/rebuilds the local Chroma collection and registry**; back up `data/` first. No benchmark scores are included here because no user-specific evaluation corpus has been measured.
 
 ## Docker
 
@@ -153,13 +154,14 @@ The production frontend is served at `http://localhost:8080`; the API is at `htt
 - **Top-K (6):** limits prompt size and latency while allowing multiple passages. Larger values can add noise and consume more context; tune using Hit@K/MRR and answer quality on your own corpus.
 - **Why Groq:** it provides hosted inference through an OpenAI-compatible endpoint, so LangChain's `ChatOpenAI` client can be used without a provider-specific chain. It introduces network dependency, rate limits, and key management.
 - **Why Chroma:** it is a lightweight persistent vector store suitable for a local/single-service project. At roughly 10,000 documents (and potentially far more chunks), ingestion, metadata filtering, memory, concurrent writes, backup/recovery, and query latency need load testing; a managed or distributed vector database and background ingestion workers may become appropriate. A document count alone does not predict chunk count.
-- **Duplicate-upload race handling:** a process-wide re-entrant lock covers hash lookup, indexing, and registry write, so concurrent uploads in the same backend process cannot both index identical content. Multi-process/multi-host deployments need a cross-process lock or transactional database uniqueness constraint.
+- **Duplicate-upload race handling:** a short process-wide re-entrant lock covers only the hash lookup and registry write. Heavy work (parse, split, embed, store) runs outside the lock. An in-flight map keyed by file hash makes concurrent identical uploads wait for the first one, then report `already_exists`; chunks of an in-flight upload are never adopted as a legacy record, which previously could create duplicate registry entries. Multi-process/multi-host deployments need a cross-process lock or transactional database uniqueness constraint.
 - **MMR:** optional and off by default. It trades a little retrieval work for diversity among returned chunks. Hybrid BM25 + vector search was deliberately not added because a robust corpus-wide sparse index, synchronization, and score fusion would increase complexity beyond the reliability of this change set.
 - **Registry:** JSON is intentionally small and simple for this single-instance project. For multi-worker deployments or frequent writes, migrate it to SQLite/PostgreSQL with transactional uniqueness and locking.
 
 ## Known limitations
 
-- PDFs are text-extracted, not OCR-processed. Scanned/image-only PDFs return HTTP 422 with a clear extractable-text error; OCR is intentionally not bundled.
+- PDFs are text-extracted with PyPDF, not OCR-processed. Scanned, image-only or corrupt PDFs return HTTP 422 with a clear extractable-text error; OCR is intentionally not bundled.
+- There is no authentication or rate limiting. Add both before exposing the API publicly, because anyone could delete documents or consume the Groq quota.
 - Embedding model initialization requires the model to be available locally or downloadable on first use. The Hugging Face Docker volume caches it across container recreation.
 - Groq queries require internet access and a valid API key. Backend tests mock the LLM and embeddings and do not validate provider availability.
 - JSON registry locking is process-local; it is not a distributed lock.

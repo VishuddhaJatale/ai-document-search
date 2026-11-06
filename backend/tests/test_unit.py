@@ -43,3 +43,18 @@ def test_context_page_is_one_indexed_and_metadata_remains_zero_indexed():
     context = _build_context([(doc, 0.9)])
     assert "Page 1" in context
     assert doc.metadata["page"] == 0
+
+
+def test_decode_text_falls_back_through_encodings():
+    from app.document_loader import decode_text
+    assert decode_text("héllo".encode("utf-8")) == "héllo"
+    assert decode_text("café".encode("cp1252")) == "café"
+    assert isinstance(decode_text(b"\x81\x8d\x8f"), str)
+
+
+def test_unreadable_pdf_raises_value_error(tmp_path):
+    from app.document_loader import load_document
+    bad = tmp_path / "bad.pdf"
+    bad.write_bytes(b"%PDF-1.4 garbage")
+    with pytest.raises(ValueError, match="No extractable text found"):
+        load_document(bad)

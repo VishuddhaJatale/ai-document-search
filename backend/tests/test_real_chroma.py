@@ -33,3 +33,37 @@ def test_duplicate_upload_and_delete_with_real_chroma(real_store):
     assert second.document_id == first.document_id
     assert document_service.remove_document(first.document_id) is True
     assert document_service.remove_document(first.document_id) is False
+
+
+def test_concurrent_identical_uploads_create_one_registry_entry(real_store):
+    """Regression: an in-flight upload's chunks must not be adopted as a legacy record."""
+    import json
+    import threading
+
+    for trial in range(10):
+        content = f"Trial {trial}. Attendance must be at least 75 percent. ".encode() * 60
+        statuses = []
+        threads = [threading.Thread(target=lambda: statuses.append(document_service.index_document("c.txt", content).status)) for _ in range(5)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert statuses.count("indexed") == 1
+    registry = json.loads(document_service.REGISTRY_PATH.read_text())
+    ids = [item["document_id"] for item in registry]
+    assert len(ids) == len(set(ids)) == 10
+
+
+def test_inflight_hash_is_not_adopted_as_legacy_record(real_store):
+    content = b"Some document that is currently being indexed. " * 30
+    first = document_service.index_document("a.txt", content)
+    document_service.REGISTRY_PATH.write_text("[]")  # chunks exist in Chroma, registry record not written yet
+    file_hash = document_service._file_hash(content)
+    document_service._inflight[file_hash] = __import__("threading").Event()
+    try:
+        with document_service._registry_lock:
+            assert document_service._find_duplicate_locked("a.txt", file_hash) is None
+        assert document_service._read_registry() == []
+    finally:
+        document_service._inflight.pop(file_hash, None)
+    assert first.status == "indexed"

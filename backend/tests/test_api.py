@@ -95,3 +95,18 @@ def test_registry_reindexes_when_vector_index_is_missing(client, isolated_data):
     assert second["status"] == "indexed"
     assert second["document_id"] != first["document_id"]
     assert second["chunks"] >= 1
+
+
+def test_retrieve_endpoint_returns_sources_without_calling_llm(client, monkeypatch):
+    def fail_if_called():
+        raise AssertionError("retrieval must not call the LLM")
+    monkeypatch.setattr(rag, "get_llm", fail_if_called)
+    monkeypatch.setattr(rag, "retrieve", lambda **_kwargs: [(Document(page_content="x", metadata={"document_id": "d9", "source": "r.txt", "page": 2, "chunk_id": "c9"}), 0.5)])
+    response = client.post("/retrieve", json={"question": "anything", "top_k": 3})
+    assert response.status_code == 200
+    assert response.json()["sources"][0]["page"] == 3
+    assert "retrieval_latency_seconds" in response.json()
+
+
+def test_question_length_is_limited(client):
+    assert client.post("/query", json={"question": "x" * 4001}).status_code == 422
