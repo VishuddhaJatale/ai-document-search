@@ -23,3 +23,5 @@ DATA_DIR=./data GROQ_API_KEY=... python eval/run_eval.py --direct --chunk-size-s
 ```
 
 The sweep deletes and rebuilds the local Chroma collection and document registry. Back up `data/` first. It is intentionally not an API operation because the running service's chunk configuration is fixed at process startup.
+
+Hit@K and MRR are measured through `/retrieve` (retrieval only). Use `--skip-answers` to skip LLM calls entirely.

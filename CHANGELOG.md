@@ -1,5 +1,18 @@
 # Changelog
 
+## Review fixes
+
+- `backend/app/document_service.py` — fixed race that created duplicate registry entries for concurrent identical uploads.
+- `backend/app/document_loader.py` — removed dead Unstructured fallback, shared text decoding, log PDF parse errors.
+- `backend/app/main.py` — removed redundant TXT decode, added `/retrieve` endpoint.
+- `backend/app/rag.py` — added `retrieve_sources`, removed document-specific example from the rewrite prompt.
+- `backend/app/schemas.py` — added `RetrieveResponse`, question length limit.
+- `backend/app/config.py`, `.env.example`, `docker-compose.yml` — Chroma telemetry off by default.
+- `eval/run_eval.py` — Hit@K/MRR now measure retrieval only; added `--skip-answers`.
+- `frontend/src/services/api.js`, `Chat.jsx` — lint fix; error messages excluded from chat history.
+- `.github/workflows/ci.yml` — CI now runs frontend lint.
+- Tests — added race regression, `/retrieve`, loader and length-limit tests.
+
 - `.github/workflows/ci.yml` — added backend pytest and frontend install/test/build CI jobs.
 - `.gitignore` — excludes secrets, Python/Node build artifacts, runtime data, and generated eval reports.
 - `README.md` — documented updated architecture, endpoints, tests, evaluation, Docker, trade-offs, and limitations.

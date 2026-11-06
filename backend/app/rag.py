@@ -8,7 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from .config import MAX_CONTEXT_CHARS, TOP_K
 from .llm import get_llm
 from .retriever import retrieve
-from .schemas import QueryResponse, Source
+from .schemas import QueryResponse, RetrieveResponse, Source
 
 logger = logging.getLogger(__name__)
 FALLBACK_ANSWER = "I could not find this information in the uploaded documents."
@@ -36,7 +36,7 @@ Document context:
     ("human", "Latest user message: {original_question}\nStandalone question: {question}"),
 ])
 REWRITE_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", "Rewrite the latest user message as a standalone search question about the document, using the conversation history to resolve references like 'it', 'that', 'previous answer'. If the user asks to simplify or re-explain an earlier answer, the standalone question must name the topic itself, e.g. 'Explain in simple terms what the paper Truth, Logic and Provability is about'. Return only the rewritten question. Do not answer it."),
+    ("system", "Rewrite the latest user message as a standalone search question about the document, using the conversation history to resolve references like 'it', 'that', 'previous answer'. If the user asks to simplify or re-explain an earlier answer, the standalone question must name the topic itself, e.g. 'Explain in simple terms what the attendance policy says'. Return only the rewritten question. Do not answer it."),
     ("human", "Conversation history:\n{history}\n\nLatest question: {question}"),
 ])
 
@@ -99,6 +99,13 @@ def _prepare(question: str, top_k: int, document_id: Optional[str], history: lis
     context = _build_context(results)
     logger.info("rewritten_question=%r", rewritten)
     return rewritten, results, context, retrieval_seconds, rewrite_seconds
+
+
+def retrieve_sources(question: str, top_k: int = TOP_K, document_id: Optional[str] = None) -> RetrieveResponse:
+    """Retrieval only: ranked sources for a question, with no query rewriting and no LLM call."""
+    started = time.perf_counter()
+    results = retrieve(question=question, k=top_k, document_id=document_id)
+    return RetrieveResponse(sources=_sources(results), retrieval_latency_seconds=round(time.perf_counter() - started, 6))
 
 
 def answer_question(question: str, top_k: int = TOP_K, document_id: Optional[str] = None, history: list = None) -> QueryResponse:

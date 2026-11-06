@@ -3,6 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
+# Chroma sends anonymous usage telemetry by default; keep it off unless explicitly enabled.
+os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.getenv("DATA_DIR", str(PROJECT_ROOT / "data"))).expanduser().resolve()

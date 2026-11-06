@@ -68,7 +68,7 @@ export async function queryDocuments(question, documentId = null, topK = 6, hist
     if (!response.ok) await parseError(response, "Failed to get answer");
     return response.json();
   } catch (error) {
-    if (error instanceof TypeError) throw new Error("Unable to connect to the backend. Please make sure the server is running.");
+    if (error instanceof TypeError) throw new Error("Unable to connect to the backend. Please make sure the server is running.", { cause: error });
     throw error;
   }
 }

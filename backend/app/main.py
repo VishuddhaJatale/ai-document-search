@@ -10,8 +10,8 @@ from starlette.concurrency import run_in_threadpool
 from .config import CORS_ORIGINS, MAX_UPLOAD_MB, TOP_K, WARMUP_EMBEDDINGS
 from .embeddings import warm_up
 from .document_service import index_document, list_documents, remove_document
-from .rag import answer_question, stream_answer
-from .schemas import DeleteResponse, DocumentResponse, QueryRequest, QueryResponse
+from .rag import answer_question, retrieve_sources, stream_answer
+from .schemas import DeleteResponse, DocumentResponse, QueryRequest, QueryResponse, RetrieveResponse
 from .vector_store import vector_store_is_reachable
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -56,14 +56,6 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
     if suffix == "pdf" and not content.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="The uploaded PDF does not have a valid PDF signature.")
-    if suffix == "txt":
-        try:
-            content.decode("utf-8")
-        except UnicodeDecodeError:
-            try:
-                content.decode("cp1252")
-            except UnicodeDecodeError:
-                content.decode("latin-1", errors="replace")
     try:
         return await run_in_threadpool(index_document, filename, content)
     except ValueError as exc:
@@ -80,6 +72,16 @@ def query_documents(request: QueryRequest):
     except Exception as exc:
         logger.exception("Query failed")
         raise HTTPException(status_code=500, detail="Query processing failed") from exc
+
+
+@app.post("/retrieve", response_model=RetrieveResponse)
+def retrieve_documents(request: QueryRequest):
+    """Retrieval only (no LLM call). Used for debugging and for retrieval-only evaluation."""
+    try:
+        return retrieve_sources(question=request.question, top_k=request.top_k or TOP_K, document_id=request.document_id)
+    except Exception as exc:
+        logger.exception("Retrieval failed")
+        raise HTTPException(status_code=500, detail="Retrieval failed") from exc
 
 
 @app.post("/query/stream")

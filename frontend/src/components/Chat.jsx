@@ -14,7 +14,7 @@ function Chat({ selectedDocument }) {
     event.preventDefault();
     if (!question.trim() || loading) return;
     const userQuestion = question.trim();
-    const history = messages.filter((message) => ["user", "assistant"].includes(message.role)).slice(-6);
+    const history = messages.filter((message) => ["user", "assistant"].includes(message.role) && !message.error && message.content).slice(-6);
     setMessages((current) => [...current, { role: "user", content: userQuestion }, { role: "assistant", content: "", sources: [], streaming: true }]);
     setQuestion("");
     setLoading(true);
@@ -24,7 +24,7 @@ function Chat({ selectedDocument }) {
       });
       setMessages((current) => current.map((message, index) => index === current.length - 1 ? { role: "assistant", content: result.answer, sources: result.sources || [] } : message));
     } catch (error) {
-      setMessages((current) => current.map((message, index) => index === current.length - 1 ? { role: "assistant", content: `Error: ${error.message}`, sources: [] } : message));
+      setMessages((current) => current.map((message, index) => index === current.length - 1 ? { role: "assistant", content: `Error: ${error.message}`, sources: [], error: true } : message));
     } finally { setLoading(false); }
   };
 
