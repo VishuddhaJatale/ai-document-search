@@ -1,4 +1,3 @@
-import hmac
 import json
 import logging
 import threading
@@ -11,10 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from .config import (
-    API_KEY, CORS_ORIGINS, MAX_UPLOAD_MB, RATE_LIMIT_REQUESTS,
-    RATE_LIMIT_WINDOW_SECONDS, REQUIRE_API_KEY, TOP_K, WARMUP_EMBEDDINGS,
-)
+from .config import CORS_ORIGINS, MAX_UPLOAD_MB, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS, TOP_K, WARMUP_EMBEDDINGS
 from .embeddings import warm_up
 from .document_service import index_document, list_documents, remove_document
 from .rag import answer_question, retrieve_sources, stream_answer
@@ -39,12 +35,10 @@ app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials
 
 
 @app.middleware("http")
-async def protect_api(request: Request, call_next):
-    path = request.url.path
-    if request.method == "OPTIONS" or path == "/health":
+async def rate_limit_api(request: Request, call_next):
+    if request.method == "OPTIONS" or request.url.path == "/health":
         return await call_next(request)
 
-    # Rate-limit before authentication so invalid-key attempts are throttled too.
     client_ip = request.client.host if request.client else "unknown"
     now = time.monotonic()
     with _rate_lock:
@@ -59,11 +53,6 @@ async def protect_api(request: Request, call_next):
                 headers={"Retry-After": str(retry_after)},
             )
         bucket.append(now)
-
-    if REQUIRE_API_KEY:
-        supplied = request.headers.get("X-API-Key", "")
-        if not API_KEY or not hmac.compare_digest(supplied, API_KEY):
-            return JSONResponse(status_code=401, content={"detail": "A valid API key is required."})
     return await call_next(request)
 
 
@@ -75,7 +64,6 @@ def health():
         "groq_api_key_configured": bool(GROQ_API_KEY),
         "vector_store_reachable": vector_store_is_reachable(),
         "retrieval_mode": RETRIEVAL_MODE,
-        "api_key_required": REQUIRE_API_KEY,
     }
 
 
