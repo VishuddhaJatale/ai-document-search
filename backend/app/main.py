@@ -44,11 +44,7 @@ async def protect_api(request: Request, call_next):
     if request.method == "OPTIONS" or path == "/health":
         return await call_next(request)
 
-    if REQUIRE_API_KEY:
-        supplied = request.headers.get("X-API-Key", "")
-        if not API_KEY or not hmac.compare_digest(supplied, API_KEY):
-            return JSONResponse(status_code=401, content={"detail": "A valid API key is required."})
-
+    # Rate-limit before authentication so invalid-key attempts are throttled too.
     client_ip = request.client.host if request.client else "unknown"
     now = time.monotonic()
     with _rate_lock:
@@ -63,6 +59,11 @@ async def protect_api(request: Request, call_next):
                 headers={"Retry-After": str(retry_after)},
             )
         bucket.append(now)
+
+    if REQUIRE_API_KEY:
+        supplied = request.headers.get("X-API-Key", "")
+        if not API_KEY or not hmac.compare_digest(supplied, API_KEY):
+            return JSONResponse(status_code=401, content={"detail": "A valid API key is required."})
     return await call_next(request)
 
 
