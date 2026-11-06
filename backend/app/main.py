@@ -1,13 +1,20 @@
+import hmac
 import json
 import logging
 import threading
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, File, HTTPException, UploadFile
+
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
-from .config import CORS_ORIGINS, MAX_UPLOAD_MB, TOP_K, WARMUP_EMBEDDINGS
+from .config import (
+    API_KEY, CORS_ORIGINS, MAX_UPLOAD_MB, RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_SECONDS, REQUIRE_API_KEY, TOP_K, WARMUP_EMBEDDINGS,
+)
 from .embeddings import warm_up
 from .document_service import index_document, list_documents, remove_document
 from .rag import answer_question, retrieve_sources, stream_answer
@@ -16,22 +23,59 @@ from .vector_store import vector_store_is_reachable
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
+_rate_lock = threading.Lock()
+_request_times = defaultdict(deque)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     if WARMUP_EMBEDDINGS:
-        # Background thread: the API accepts requests immediately while the model loads.
         threading.Thread(target=warm_up, name="embedding-warmup", daemon=True).start()
     yield
 
 
-app = FastAPI(lifespan=lifespan, title="AI Document Intelligence API", version="2.0.0", description="RAG-based document search and question answering API.")
+app = FastAPI(lifespan=lifespan, title="AI Document Intelligence API", version="2.1.0", description="RAG-based document search and question answering API.")
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def protect_api(request: Request, call_next):
+    path = request.url.path
+    if request.method == "OPTIONS" or path == "/health":
+        return await call_next(request)
+
+    if REQUIRE_API_KEY:
+        supplied = request.headers.get("X-API-Key", "")
+        if not API_KEY or not hmac.compare_digest(supplied, API_KEY):
+            return JSONResponse(status_code=401, content={"detail": "A valid API key is required."})
+
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    with _rate_lock:
+        bucket = _request_times[client_ip]
+        while bucket and now - bucket[0] >= RATE_LIMIT_WINDOW_SECONDS:
+            bucket.popleft()
+        if len(bucket) >= RATE_LIMIT_REQUESTS:
+            retry_after = max(1, int(RATE_LIMIT_WINDOW_SECONDS - (now - bucket[0])))
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Please retry later."},
+                headers={"Retry-After": str(retry_after)},
+            )
+        bucket.append(now)
+    return await call_next(request)
 
 
 @app.get("/health")
 def health():
-    from .config import GROQ_API_KEY
-    return {"status": "ok", "groq_api_key_configured": bool(GROQ_API_KEY), "vector_store_reachable": vector_store_is_reachable()}
+    from .config import GROQ_API_KEY, RETRIEVAL_MODE
+    return {
+        "status": "ok",
+        "groq_api_key_configured": bool(GROQ_API_KEY),
+        "vector_store_reachable": vector_store_is_reachable(),
+        "retrieval_mode": RETRIEVAL_MODE,
+        "api_key_required": REQUIRE_API_KEY,
+    }
 
 
 @app.post("/documents/upload", response_model=DocumentResponse)
@@ -41,8 +85,7 @@ async def upload_document(file: UploadFile = File(...)):
     if suffix not in {"pdf", "txt"}:
         raise HTTPException(status_code=400, detail="Only PDF and TXT files are supported.")
     max_bytes = MAX_UPLOAD_MB * 1024 * 1024
-    chunks = []
-    total = 0
+    chunks, total = [], 0
     while True:
         block = await file.read(min(1024 * 1024, max_bytes + 1 - total))
         if not block:
@@ -76,7 +119,6 @@ def query_documents(request: QueryRequest):
 
 @app.post("/retrieve", response_model=RetrieveResponse)
 def retrieve_documents(request: QueryRequest):
-    """Retrieval only (no LLM call). Used for debugging and for retrieval-only evaluation."""
     try:
         return retrieve_sources(question=request.question, top_k=request.top_k or TOP_K, document_id=request.document_id)
     except Exception as exc:
